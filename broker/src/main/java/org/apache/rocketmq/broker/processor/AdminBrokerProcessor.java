@@ -74,8 +74,10 @@ import org.apache.rocketmq.common.protocol.body.ProducerConnection;
 import org.apache.rocketmq.common.protocol.body.QueryConsumeQueueResponseBody;
 import org.apache.rocketmq.common.protocol.body.QueryConsumeTimeSpanBody;
 import org.apache.rocketmq.common.protocol.body.QueryCorrectionOffsetBody;
+import org.apache.rocketmq.common.protocol.body.QueryMessageRequestModeRequestBody;
 import org.apache.rocketmq.common.protocol.body.QuerySubscriptionResponseBody;
 import org.apache.rocketmq.common.protocol.body.QueueTimeSpan;
+import org.apache.rocketmq.common.protocol.body.SetMessageRequestModeRequestBody;
 import org.apache.rocketmq.common.protocol.body.TopicConfigAndMappingSerializeWrapper;
 import org.apache.rocketmq.common.protocol.body.TopicList;
 import org.apache.rocketmq.common.protocol.body.UnlockBatchRequestBody;
@@ -245,6 +247,8 @@ public class AdminBrokerProcessor implements NettyRequestProcessor {
                 return this.registerFilterServer(ctx, request);
             case RequestCode.QUERY_CONSUME_TIME_SPAN:
                 return this.queryConsumeTimeSpan(ctx, request);
+            case RequestCode.QUERY_MESSAGE_REQUEST_MODE:
+                return this.queryMessageRequestMode(ctx, request);
             case RequestCode.GET_SYSTEM_TOPIC_LIST_FROM_BROKER:
                 return this.getSystemTopicListFromBroker(ctx, request);
             case RequestCode.CLEAN_EXPIRED_CONSUMEQUEUE:
@@ -1678,6 +1682,42 @@ public class AdminBrokerProcessor implements NettyRequestProcessor {
         QueryConsumeTimeSpanBody queryConsumeTimeSpanBody = new QueryConsumeTimeSpanBody();
         queryConsumeTimeSpanBody.setConsumeTimeSpanSet(timeSpanSet);
         response.setBody(queryConsumeTimeSpanBody.encode());
+        response.setCode(ResponseCode.SUCCESS);
+        response.setRemark(null);
+        return response;
+    }
+
+    private RemotingCommand queryMessageRequestMode(ChannelHandlerContext ctx, RemotingCommand request) {
+        final RemotingCommand response = RemotingCommand.createResponseCommand(null);
+        QueryMessageRequestModeRequestBody requestBody =
+            RemotingSerializable.decode(request.getBody(), QueryMessageRequestModeRequestBody.class);
+
+        SetMessageRequestModeRequestBody requestModeRequestBody =
+            this.brokerController.getQueryAssignmentProcessor().getMessageRequestModeManager()
+            .getMessageRequestMode(requestBody.getTopic(), requestBody.getConsumerGroup());
+
+        if (requestModeRequestBody == null) {
+            TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestBody.getTopic());
+            if (null == topicConfig) {
+                LOGGER.warn("AdminBrokerProcessor#queryMessageRequestMode: topic config does not exist, topic={}", requestBody.getTopic());
+                response.setRemark(String.format("Topic[%s] not exist", requestBody.getTopic()));
+                response.setCode(ResponseCode.TOPIC_NOT_EXIST);
+            }
+            SubscriptionGroupConfig groupConfig =
+                    this.brokerController.getSubscriptionGroupManager().getSubscriptionGroupTable().get(requestBody.getConsumerGroup());
+            if (groupConfig == null) {
+                LOGGER.warn("AdminBrokerProcessor#queryMessageRequestMode: topic config does not exist, group={}",
+                    ctx.channel().remoteAddress(), requestBody.getConsumerGroup());
+                response.setCode(ResponseCode.SUBSCRIPTION_GROUP_NOT_EXIST);
+                response.setRemark(String.format("ConsumerGroup[%s] not exist", requestBody.getTopic()));
+                return response;
+            }
+            requestModeRequestBody = new SetMessageRequestModeRequestBody();
+            requestModeRequestBody.setTopic(requestBody.getTopic());
+            requestModeRequestBody.setConsumerGroup(requestBody.getConsumerGroup());
+        }
+
+        response.setBody(requestModeRequestBody.encode());
         response.setCode(ResponseCode.SUCCESS);
         response.setRemark(null);
         return response;

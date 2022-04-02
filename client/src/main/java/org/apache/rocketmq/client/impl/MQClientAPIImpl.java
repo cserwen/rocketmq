@@ -97,6 +97,7 @@ import org.apache.rocketmq.common.protocol.body.QueryAssignmentResponseBody;
 import org.apache.rocketmq.common.protocol.body.QueryConsumeQueueResponseBody;
 import org.apache.rocketmq.common.protocol.body.QueryConsumeTimeSpanBody;
 import org.apache.rocketmq.common.protocol.body.QueryCorrectionOffsetBody;
+import org.apache.rocketmq.common.protocol.body.QueryMessageRequestModeRequestBody;
 import org.apache.rocketmq.common.protocol.body.QuerySubscriptionResponseBody;
 import org.apache.rocketmq.common.protocol.body.QueueTimeSpan;
 import org.apache.rocketmq.common.protocol.body.ResetOffsetBody;
@@ -2734,6 +2735,25 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
             throw new MQClientException(response.getCode(), response.getRemark());
         }
     }
+
+    public SetMessageRequestModeRequestBody queryMessageRequestMode(final String brokerAddr, final String topic,
+        final String consumerGroup, final long timeoutMillis) throws RemotingConnectException,
+        RemotingSendRequestException, RemotingTimeoutException, InterruptedException, MQClientException {
+        RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.QUERY_MESSAGE_REQUEST_MODE, null);
+
+        QueryMessageRequestModeRequestBody requestBody = new QueryMessageRequestModeRequestBody();
+        requestBody.setTopic(topic);
+        requestBody.setConsumerGroup(consumerGroup);
+        request.setBody(requestBody.encode());
+
+        RemotingCommand response = this.remotingClient.invokeSync(MixAll.brokerVIPChannel(this.clientConfig.isVipChannelEnabled(), brokerAddr), request, timeoutMillis);
+        assert response != null;
+        if (ResponseCode.SUCCESS == response.getCode()) {
+            return SetMessageRequestModeRequestBody.decode(response.getBody(), SetMessageRequestModeRequestBody.class);
+        }
+        throw new MQClientException(response.getCode(), response.getRemark());
+    }
+
 
     public TopicConfigAndQueueMapping getTopicConfig(final String brokerAddr, String topic,
         long timeoutMillis) throws InterruptedException,

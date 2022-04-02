@@ -41,6 +41,7 @@ import org.apache.rocketmq.common.protocol.body.KVTable;
 import org.apache.rocketmq.common.protocol.body.ProducerConnection;
 import org.apache.rocketmq.common.protocol.body.QueryConsumeQueueResponseBody;
 import org.apache.rocketmq.common.protocol.body.QueueTimeSpan;
+import org.apache.rocketmq.common.protocol.body.SetMessageRequestModeRequestBody;
 import org.apache.rocketmq.common.protocol.body.SubscriptionGroupWrapper;
 import org.apache.rocketmq.common.protocol.body.TopicConfigSerializeWrapper;
 import org.apache.rocketmq.common.protocol.body.TopicList;
@@ -357,6 +358,10 @@ public interface MQAdminExt extends MQAdmin {
         MessageRequestMode mode, final int popWorkGroupSize, final long timeoutMillis)
         throws InterruptedException, RemotingTimeoutException, RemotingSendRequestException,
         RemotingConnectException, MQClientException;
+
+    SetMessageRequestModeRequestBody queryMessageRequestMode(final String brokerAddr, final String topic,
+        final String consumerGroup, final long timeoutMillis) throws RemotingConnectException,
+        RemotingSendRequestException, RemotingTimeoutException, InterruptedException, MQClientException;
 
     long searchOffset(final String brokerAddr, final String topicName,
         final int queueId, final long timestamp, final long timeoutMillis)
