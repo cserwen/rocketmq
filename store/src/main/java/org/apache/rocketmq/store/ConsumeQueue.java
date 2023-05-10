@@ -30,6 +30,7 @@ import org.apache.rocketmq.common.message.MessageAccessor;
 import org.apache.rocketmq.common.message.MessageConst;
 import org.apache.rocketmq.common.message.MessageDecoder;
 import org.apache.rocketmq.common.message.MessageExtBrokerInner;
+import org.apache.rocketmq.common.topic.TopicValidator;
 import org.apache.rocketmq.logging.org.slf4j.Logger;
 import org.apache.rocketmq.logging.org.slf4j.LoggerFactory;
 import org.apache.rocketmq.store.config.BrokerRole;
@@ -837,7 +838,13 @@ public class ConsumeQueue implements ConsumeQueueInterface, FileQueueLifeCycle {
     }
 
     public boolean isNeedHandleMultiDispatch(MessageExtBrokerInner msg) {
-        return messageStore.getMessageStoreConfig().isEnableMultiDispatch() && !msg.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX);
+        boolean isNeed = messageStore.getMessageStoreConfig().isEnableMultiDispatch();
+        isNeed = isNeed && !msg.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX);
+        // don't build lmq for half-transactional and check-max-time messages
+        isNeed = isNeed && !TopicValidator.RMQ_SYS_TRANS_HALF_TOPIC.equals(getTopic());
+        isNeed = isNeed && !TopicValidator.RMQ_SYS_TRANS_CHECK_MAX_TIME_TOPIC.equals(getTopic());
+
+        return isNeed;
     }
 
     public String queueKey(String queueName, MessageExtBrokerInner msgInner) {
